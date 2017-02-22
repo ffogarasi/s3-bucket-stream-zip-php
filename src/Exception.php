@@ -6,4 +6,6 @@
 
 namespace JMathai\S3BucketStreamZip;
 
-abstract class Exception extends \Exception {}
+abstract class Exception extends \Exception
+{
+}
