@@ -5,27 +5,20 @@
   "keywords": ["amazon","aws","s3","stream","zip","php","download"],
   "type": "library",
   "license": "MIT",
-  "authors": [
-    {
-      "name": "Jaisen Mathai",
-      "email": "jaisen@jmathai.com",
-      "homepage": "http://jaisenmathai.com/"
-    }
-  ],
   "support": {
     "issues": "https://github.com/jmathai/s3-bucket-stream-zip-php/issues"
   },
   "require": {
     "php": ">=5.3.3",
     "maennchen/zipstream-php": "0.3.*",
-    "aws/aws-sdk-php": "2.*"
+    "aws/aws-sdk-php": "3.*"
   },
   "require-dev": {
-    "phpunit/phpunit": "~4.0"
+    "phpunit/phpunit": "~5.0"
   },
   "autoload": {
     "psr-4": {
-      "JMathai\\S3BucketStreamZip\\": "src/"
+      "MTL\\S3BucketStreamZip\\": "src/"
     }
   }
 }

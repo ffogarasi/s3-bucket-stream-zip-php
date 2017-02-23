@@ -1,23 +1,10 @@
 <?php
-/**
- * @author Jaisen Mathai <jaisen@jmathai.com>
- * @copyright Copyright 2015, Jaisen Mathai
- *
- * This library streams the contents from an Amazon S3 bucket
- *  without needing to store the files on disk or download
- *  all of the files before starting to send the archive.
- *
- * Example usage can be found in the examples folder.
- */
 
-namespace JMathai\S3BucketStreamZip;
-
-use JMathai\S3BucketStreamZip\Exception\InvalidParameterException;
+namespace MTL\S3BucketStreamZip;
 
 use Aws\S3\S3Client;
-use Aws\S3\Exception\S3Exception;
-
-use ZipStream;
+use MTL\S3BucketStreamZip\Exception\InvalidParameterException;
+use ZipStream\ZipStream;
 
 class S3BucketStreamZip
 {
@@ -53,8 +40,9 @@ class S3BucketStreamZip
     /**
      * Create a new ZipStream object.
      *
-     * @param Array $auth - AWS key and secret
-     * @param Array $params - AWS List Object parameters
+     * @param array $auth - AWS key and secret
+     * @param array $params - AWS List Object parameters
+     * @throws InvalidParameterException
      */
     public function __construct($auth, $params)
     {
@@ -82,8 +70,8 @@ class S3BucketStreamZip
     /**
      * Stream a zip file to the client
      *
-     * @param String $filename - Name for the file to be sent to the client
-     * @param Array $params - Optional parameters
+     * @param string $filename - Name for the file to be sent to the client
+     * @param array $params - Optional parameters
      *  {
      *    expiration: '+10 minutes'
      *  }
@@ -98,7 +86,7 @@ class S3BucketStreamZip
         // Initialize the ZipStream object and pass in the file name which
         //  will be what is sent in the content-disposition header.
         // This is the name of the file which will be sent to the client.
-        $zip = new ZipStream\ZipStream($filename);
+        $zip = new ZipStream($filename);
 
         // Get a list of objects from the S3 bucket. The iterator is a high
         //  level abstration that will fetch ALL of the objects without having

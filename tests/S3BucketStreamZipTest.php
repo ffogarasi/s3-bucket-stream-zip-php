@@ -1,18 +1,14 @@
 <?php
-/**
- * @author Jaisen Mathai <jaisen@jmathai.com>
- * @copyright Copyright 2015, Jaisen Mathai
- */
 
-namespace JMathai\S3BucketStreamZipTest;
+namespace MTL\S3BucketStreamZipTest;
 
-use JMathai\S3BucketStreamZip\S3BucketStreamZip;
+use MTL\S3BucketStreamZip\S3BucketStreamZip;
 use PHPUnit_Framework_TestCase;
 
 class S3BucketStreamZipTest extends PHPUnit_Framework_TestCase
 {
     /**
-     * @expectedException \JMathai\S3BucketStreamZip\Exception\InvalidParameterException
+     * @expectedException \MTL\S3BucketStreamZip\Exception\InvalidParameterException
      */
     public function testInvalidParamsToConstructorKey()
     {
@@ -20,7 +16,7 @@ class S3BucketStreamZipTest extends PHPUnit_Framework_TestCase
     }
 
     /**
-     * @expectedException \JMathai\S3BucketStreamZip\Exception\InvalidParameterException
+     * @expectedException \MTL\S3BucketStreamZip\Exception\InvalidParameterException
      */
     public function testInvalidParamsToConstructorSecret()
     {
@@ -28,7 +24,7 @@ class S3BucketStreamZipTest extends PHPUnit_Framework_TestCase
     }
 
     /**
-     * @expectedException \JMathai\S3BucketStreamZip\Exception\InvalidParameterException
+     * @expectedException \MTL\S3BucketStreamZip\Exception\InvalidParameterException
      */
     public function testInvalidParamsToConstructorBucket()
     {
@@ -37,6 +33,11 @@ class S3BucketStreamZipTest extends PHPUnit_Framework_TestCase
 
     public function testValidParamsToConstructor()
     {
-        $client = new S3BucketStreamZip(['key' => 'foo', 'secret' => 'bar'], ['Bucket' => 'foobar']);
+        $client = new S3BucketStreamZip([
+            'key'     => 'foo',
+            'secret'  => 'bar',
+            'region'  => '',
+            'version' => 'latest',
+        ], ['Bucket' => 'foobar']);
     }
 }
