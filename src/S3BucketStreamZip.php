@@ -11,10 +11,12 @@ class S3BucketStreamZip
     /**
      * @var array
      *
-     * {
-     *   key: your_aws_key,
-     *   secret: your_aws_secret
-     * }
+     * [
+     *     'key'     => 'YOUR_KEY',
+     *     'secret'  => 'YOUR_SECRET',
+     *     'region'  => 'YOUR_REGION',
+     *     'version' => 'latest',
+     * ]
      */
     private $auth = [];
 
@@ -26,9 +28,7 @@ class S3BucketStreamZip
      *
      * http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGET.html
      *
-     * {
-     *   Bucket: name_of_bucket
-     * }
+     * ['Bucket' => 'YOUR_BUCKET']
      */
     private $params = [];
 
@@ -42,6 +42,7 @@ class S3BucketStreamZip
      *
      * @param array $auth - AWS key and secret
      * @param array $params - AWS List Object parameters
+     * $params MUST contain a 'Bucket'
      * @throws InvalidParameterException
      */
     public function __construct($auth, $params)
@@ -64,65 +65,38 @@ class S3BucketStreamZip
         $this->auth = $auth;
         $this->params = $params;
 
-        $this->s3Client = S3Client::factory($this->auth);
+        // S3 User in $this->auth should have permission to execute ListBucket on any buckets
+        // AND GetObject on any object with which you need to interact.
+        $this->s3Client = new S3Client($this->auth);
+
+        // Register the stream wrapper from an S3Client object
+        // This allows you to access buckets and objects stored in Amazon S3 using the s3:// protocol
+        $this->s3Client->registerStreamWrapper();
     }
 
     /**
      * Stream a zip file to the client
      *
      * @param string $filename - Name for the file to be sent to the client
-     * @param array $params - Optional parameters
-     *  {
-     *    expiration: '+10 minutes'
-     *  }
+     * $filename will be what is sent in the content-disposition header
      */
-    public function send($filename, $params = [])
+    public function send($filename)
     {
-        // Set default values for the optional $params argument
-        if (!isset($params['expiration'])) {
-            $params['expiration'] = '+10 minutes';
-        }
-
-        // Initialize the ZipStream object and pass in the file name which
-        //  will be what is sent in the content-disposition header.
-        // This is the name of the file which will be sent to the client.
         $zip = new ZipStream($filename);
 
-        // Get a list of objects from the S3 bucket. The iterator is a high
-        //  level abstration that will fetch ALL of the objects without having
-        //  to manually loop over responses.
-        $result = $this->s3Client->getIterator('ListObjects', $this->params);
+        // The iterator fetches ALL of the objects without having to manually loop over responses.
+        $files = $this->s3Client->getIterator('ListObjects', $this->params);
 
-        // We loop over each object from the ListObjects call.
-        foreach ($result as $file) {
-            // We need to use a command to get a request for the S3 object
-            //  and then we can get the presigned URL.
-            $command = $this->s3Client->getCommand('GetObject', [
-                'Bucket' => $this->params['Bucket'],
-                'Key'    => $file['Key'],
-            ]);
-            $signedUrl = $command->createPresignedUrl($params['expiration']);
-
-            // Get the file name on S3 so we can save it to the zip file
-            //  using the same name.
+        // Add each object from the ListObjects call to the new zip file.
+        foreach ($files as $file) {
+            // Get the file name on S3 so we can save it to the zip file using the same name.
             $fileName = basename($file['Key']);
 
-            // We want to fetch the file to a file pointer so we create it here
-            //  and create a curl request and store the response into the file
-            //  pointer.
-            // After we've fetched the file we add the file to the zip file using
-            //  the file pointer and then we close the curl request and the file
-            //  pointer.
-            // Closing the file pointer removes the file.
-            $fp = tmpfile();
-            $ch = curl_init($signedUrl);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 120);
-            curl_setopt($ch, CURLOPT_FILE, $fp);
-            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-            curl_exec($ch);
-            curl_close($ch);
-            $zip->addFileFromStream($fileName, $fp);
-            fclose($fp);
+            // Open a stream in read-only mode
+            if ($stream = fopen("s3://{$this->params['Bucket']}/{$file['Key']}", 'r')) {
+                $zip->addFileFromStream($fileName, $stream);
+                fclose($stream);
+            }
         }
 
         // Finalize the zip file.
