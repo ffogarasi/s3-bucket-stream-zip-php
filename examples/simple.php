@@ -6,20 +6,20 @@ date_default_timezone_set('America/Chicago');
 
 require sprintf('%s/../vendor/autoload.php', __DIR__);
 
-use JMathai\S3BucketStreamZip\S3BucketStreamZip;
-use JMathai\S3BucketStreamZip\Exception\InvalidParameterException;
+use MTL\S3BucketStreamZip\S3BucketStreamZip;
 
-$stream = new S3BucketStreamZip(
-    // $auth
-    [
-        'key'    => '*********',   // required
-        'secret' => '*********'    // required
-    ],
-    // $params
-    [
-        'Bucket' => 'bucketname',  // required
-        'Prefix' => 'subfolder/'   // optional (path to folder to stream)
-    ]
-);
+$auth = [
+    'key'     => '*****',
+    'secret'  => '*****',
+    'region'  => 'us-east-1',
+    'version' => 'latest'
+];
+
+$params = [
+    'Bucket' => 'testbucket',
+    'Prefix' => 'testfolder' // supply the Prefix to get files from a specific 'folder' inside Bucket
+];
+
+$stream = new S3BucketStreamZip($auth, $params);
 
 $stream->send('name-of-zipfile-to-send.zip');
