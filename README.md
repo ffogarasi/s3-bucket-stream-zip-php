@@ -9,8 +9,15 @@ This library lets you efficiently stream the contents of an S3 bucket/folder as 
 Installation is done via composer by adding the a dependency on .
 
 ```
-composer require mtl/s3-bucket-stream-zip-php
-composer install
+// composer require mtl/s3-bucket-stream-zip-php
+// composer install
+
+"repositories": [
+    {
+        "type": "vcs",
+        "url":  "git@github.com:Michaeltlee/s3-bucket-stream-zip-php.git"
+    }
+]
 ```
 
 ## Usage
