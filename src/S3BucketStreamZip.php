@@ -74,7 +74,6 @@ class S3BucketStreamZip
                 'key'    => $this->auth['key'],
                 'secret' => $this->auth['secret'],
             ],
-//            'debug'   => true
         ]);
 
         // Register the stream wrapper from an S3Client object
@@ -90,7 +89,6 @@ class S3BucketStreamZip
      */
     public function send($filename)
     {
-
         $zip = new ZipStream($filename);
         // The iterator fetches ALL of the objects without having to manually loop over responses.
         $files = $this->s3Client->getIterator('ListObjects', $this->params);
@@ -107,8 +105,8 @@ class S3BucketStreamZip
                     ],
                 ]);
                 // open seekable(!) stream
-                if ($fp = fopen("s3://{$this->params['Bucket']}/{$file['Key']}", 'r', false, $context)) {
-                    $zip->addFileFromStream($fileName, $fp);
+                if ($stream = fopen("s3://{$this->params['Bucket']}/{$file['Key']}", 'r', false, $context)) {
+                    $zip->addFileFromStream($fileName, $stream);
                 }
             }
         }
