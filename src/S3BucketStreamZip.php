@@ -67,7 +67,15 @@ class S3BucketStreamZip
 
         // S3 User in $this->auth should have permission to execute ListBucket on any buckets
         // AND GetObject on any object with which you need to interact.
-        $this->s3Client = new S3Client($this->auth);
+        $this->s3Client = new S3Client([
+            'version'     => $this->auth['version'],
+            'region'      => $this->auth['region'],
+            'credentials' => [
+                'key'    => $this->auth['key'],
+                'secret' => $this->auth['secret'],
+            ],
+//            'debug'   => true
+        ]);
 
         // Register the stream wrapper from an S3Client object
         // This allows you to access buckets and objects stored in Amazon S3 using the s3:// protocol
@@ -82,8 +90,8 @@ class S3BucketStreamZip
      */
     public function send($filename)
     {
-        $zip = new ZipStream($filename);
 
+        $zip = new ZipStream($filename);
         // The iterator fetches ALL of the objects without having to manually loop over responses.
         $files = $this->s3Client->getIterator('ListObjects', $this->params);
 
@@ -92,10 +100,16 @@ class S3BucketStreamZip
             // Get the file name on S3 so we can save it to the zip file using the same name.
             $fileName = basename($file['Key']);
 
-            // Open a stream in read-only mode
-            if ($stream = fopen("s3://{$this->params['Bucket']}/{$file['Key']}", 'r')) {
-                $zip->addFileFromStream($fileName, $stream);
-                fclose($stream);
+            if (is_file("s3://{$this->params['Bucket']}/{$file['Key']}")) {
+                $context = stream_context_create([
+                    's3' => [
+                        'seekable' => true,
+                    ],
+                ]);
+                // open seekable(!) stream
+                if ($fp = fopen("s3://{$this->params['Bucket']}/{$file['Key']}", 'r', false, $context)) {
+                    $zip->addFileFromStream($fileName, $fp);
+                }
             }
         }
 
