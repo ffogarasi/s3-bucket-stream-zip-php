@@ -21,18 +21,6 @@ class S3BucketStreamZip
     private $auth = [];
 
     /**
-     * @var array
-     *
-     * See the documentation for the List Objects API for valid parameters.
-     * Only `Bucket` is required.
-     *
-     * http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGET.html
-     *
-     * ['Bucket' => 'YOUR_BUCKET']
-     */
-    private $params = [];
-
-    /**
      * @var object
      */
     private $s3Client;
@@ -41,29 +29,13 @@ class S3BucketStreamZip
      * Create a new ZipStream object.
      *
      * @param array $auth - AWS key and secret
-     * @param array $params - AWS List Object parameters
-     * $params MUST contain a 'Bucket'
      * @throws InvalidParameterException
      */
-    public function __construct($auth, $params)
+    public function __construct($auth)
     {
-        // We require the AWS key to be passed in $auth.
-        if (!isset($auth['key'])) {
-            throw new InvalidParameterException('$auth parameter to constructor requires a `key` attribute');
-        }
-
-        // We require the AWS secret to be passed in $auth.
-        if (!isset($auth['secret'])) {
-            throw new InvalidParameterException('$auth parameter to constructor requires a `secret` attribute');
-        }
-
-        // We require the AWS S3 bucket to be passed in $params.
-        if (!isset($params['Bucket'])) {
-            throw new InvalidParameterException('$params parameter to constructor requires a `Bucket` attribute (with a capital B)');
-        }
+        $this->validateAuth($auth);
 
         $this->auth = $auth;
-        $this->params = $params;
 
         // S3 User in $this->auth should have permission to execute ListBucket on any buckets
         // AND GetObject on any object with which you need to interact.
@@ -86,26 +58,34 @@ class S3BucketStreamZip
      *
      * @param string $filename - Name for the file to be sent to the client
      * $filename will be what is sent in the content-disposition header
+     * @param $params
+     * @throws InvalidParameterException
+     * @internal param array - See the documentation for the List Objects API for valid parameters.
+     * Only `Bucket` is required.
+     *
+     * http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGET.html
+     *
+     * ['Bucket' => 'YOUR_BUCKET']
      */
-    public function send($filename)
+    public function send($filename, $params)
     {
+        $this->validateParams($params);
+
         $zip = new ZipStream($filename);
         // The iterator fetches ALL of the objects without having to manually loop over responses.
-        $files = $this->s3Client->getIterator('ListObjects', $this->params);
+        $files = $this->s3Client->getIterator('ListObjects', $params);
 
         // Add each object from the ListObjects call to the new zip file.
         foreach ($files as $file) {
             // Get the file name on S3 so we can save it to the zip file using the same name.
             $fileName = basename($file['Key']);
 
-            if (is_file("s3://{$this->params['Bucket']}/{$file['Key']}")) {
+            if (is_file("s3://{$params['Bucket']}/{$file['Key']}")) {
                 $context = stream_context_create([
-                    's3' => [
-                        'seekable' => true,
-                    ],
+                    's3' => ['seekable' => true]
                 ]);
                 // open seekable(!) stream
-                if ($stream = fopen("s3://{$this->params['Bucket']}/{$file['Key']}", 'r', false, $context)) {
+                if ($stream = fopen("s3://{$params['Bucket']}/{$file['Key']}", 'r', false, $context)) {
                     $zip->addFileFromStream($fileName, $stream);
                 }
             }
@@ -113,5 +93,33 @@ class S3BucketStreamZip
 
         // Finalize the zip file.
         $zip->finish();
+    }
+
+    private function validateAuth($auth)
+    {
+        // We require the AWS key to be passed in $auth.
+        if (!isset($auth['key'])) {
+            throw new InvalidParameterException('$auth parameter to constructor requires a `key` attribute');
+        }
+
+        // We require the AWS secret to be passed in $auth.
+        if (!isset($auth['secret'])) {
+            throw new InvalidParameterException('$auth parameter to constructor requires a `secret` attribute');
+        }
+
+        if (!isset($auth['region'])) {
+            throw new InvalidParameterException('$auth parameter to constructor requires a `region` attribute');
+        }
+
+        if (!isset($auth['version'])) {
+            throw new InvalidParameterException('$auth parameter to constructor requires a `version` attribute');
+        }
+    }
+
+    private function validateParams($params)
+    {
+        if (!isset($params['Bucket'])) {
+            throw new InvalidParameterException('$params parameter to send() requires a `Bucket` attribute (with a capital B)');
+        }
     }
 }
