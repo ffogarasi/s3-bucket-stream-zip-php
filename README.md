@@ -32,14 +32,14 @@ $auth = [
     'version' => 'latest',      // required
 ];
 
+$stream = new S3BucketStreamZip($auth);
+
 $params = [
     'Bucket' => 'bucketname',  // required
     'Prefix' => 'subfolder/',  // optional (path to folder to stream)
 ];
 
-$stream = new S3BucketStreamZip($auth, $params);
-
-$stream->send('name-of-zipfile-to-send.zip');
+$stream->send('name-of-zipfile-to-send.zip', $params);
 
 ```
 
