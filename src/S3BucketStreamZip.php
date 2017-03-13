@@ -2,6 +2,7 @@
 
 namespace MTL\S3BucketStreamZip;
 
+use Aws\S3\Exception\S3Exception;
 use Aws\S3\S3Client;
 use MTL\S3BucketStreamZip\Exception\InvalidParameterException;
 use ZipStream\ZipStream;
@@ -70,6 +71,7 @@ class S3BucketStreamZip
     public function send($filename, $params)
     {
         $this->validateParams($params);
+        $this->doesDirectoryExist($params);
 
         $zip = new ZipStream($filename);
         // The iterator fetches ALL of the objects without having to manually loop over responses.
@@ -93,6 +95,24 @@ class S3BucketStreamZip
 
         // Finalize the zip file.
         $zip->finish();
+    }
+
+    protected function doesDirectoryExist($params)
+    {
+        // Maybe this isn't an actual key, but a prefix.
+        // Do a prefix listing of objects to determine.
+        $command = $this->s3Client->getCommand('listObjects', $params);
+
+        try {
+            $result = $this->s3Client->execute($command);
+
+            return $result['Contents'] || $result['CommonPrefixes'];
+        } catch (S3Exception $e) {
+            if ($e->getStatusCode() === 403) {
+                return false;
+            }
+            throw $e;
+        }
     }
 
     private function validateAuth($auth)
