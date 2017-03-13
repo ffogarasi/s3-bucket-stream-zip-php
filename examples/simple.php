@@ -6,20 +6,26 @@ date_default_timezone_set('America/Chicago');
 
 require sprintf('%s/../vendor/autoload.php', __DIR__);
 
+use Aws\S3\Exception\S3Exception;
+use MTL\S3BucketStreamZip\Exception\InvalidParameterException;
 use MTL\S3BucketStreamZip\S3BucketStreamZip;
 
 $auth = [
     'key'     => '*****',
     'secret'  => '*****',
-    'region'  => 'us-east-1',
-    'version' => 'latest'
+    'region'  => 'us-east-1', // optional. defaults to us-east-1
+    'version' => 'latest' // optional. defaults to latest
 ];
 
-$params = [
-    'Bucket' => 'testbucket',
-    'Prefix' => 'testfolder' // supply the Prefix to get files from a specific 'folder' inside Bucket
-];
+$stream = new S3BucketStreamZip($auth);
 
-$stream = new S3BucketStreamZip($auth, $params);
+try {
+    $stream->bucket('trashtest')
+        ->prefix('trashfolder')
+        ->send('name-of-zipfile-to-send.zip');
+} catch (InvalidParameterException $e) {
+    echo $e->getMessage();
+} catch (S3Exception $e) {
+    echo $e->getMessage();
+}
 
-$stream->send('name-of-zipfile-to-send.zip');

@@ -22,31 +22,53 @@ composer install
 set_time_limit(0);
 require sprintf('%s/../vendor/autoload.php', __DIR__);
 
-use MTL\S3BucketStreamZip\S3BucketStreamZip;
+use Aws\S3\Exception\S3Exception;
 use MTL\S3BucketStreamZip\Exception\InvalidParameterException;
+use MTL\S3BucketStreamZip\S3BucketStreamZip;
 
 $auth = [
-    'key'     => '*********',   // required
-    'secret'  => '*********',   // required
-    'region'  => 'YOUR_REGION', // required
-    'version' => 'latest',      // required
+    'key'     => '*****',
+    'secret'  => '*****',
+    'region'  => 'us-east-1', // optional. defaults to us-east-1
+    'version' => 'latest' // optional. defaults to latest
 ];
 
 $stream = new S3BucketStreamZip($auth);
 
-$params = [
-    'Bucket' => 'bucketname',  // required
-    'Prefix' => 'subfolder/',  // optional (path to folder to stream)
-];
+try {
+    $stream->bucket('testbucket')
+           ->prefix('testfolder') // prefix method adds a trailing '/'
+           ->send('name-of-zipfile-to-send.zip');
+} catch (InvalidParameterException $e) {
+    // handle the exception
+    echo $e->getMessage();
+} catch (S3Exception $e) {
+    // handle the exception
+    echo $e->getMessage();
+}
+```
 
-$stream->send('name-of-zipfile-to-send.zip', $params);
 
+```php
+$stream->bucket('another-test-bucket')
+       ->prefix('test/')
+       ->addParams([
+           'MaxKeys' => 1, // array of other parameters
+       ])
+       ->send('zipfile-to-send.zip');
+```
+
+```php
+
+// if prefix is not supplied, entire bucket contents are streamed
+$stream->bucket('another-test-bucket')
+       ->send('zipfile-to-send.zip');
 ```
 
 ## Laravel 5.4
-`pa make:provider AWSZipStreamServiceProvider` and copy the contents `examples/AwsZipStreamServiceProvider.php`. 
-Make sure config values are all set.
-Register the provider in `config/app.php`.
+- `pa make:provider AWSZipStreamServiceProvider` and copy the contents `examples/AwsZipStreamServiceProvider.php`. 
+- Make sure config values are all set.
+- Register the provider in `config/app.php`.
 
 ## Authors
 * Jaisen Mathai <jaisen@jmathai.com> - http://jaisenmathai.com
