@@ -43,6 +43,11 @@ $stream->send('name-of-zipfile-to-send.zip', $params);
 
 ```
 
+## Laravel 5.4
+`pa make:provider AWSZipStreamServiceProvider` and copy the contents `examples/AwsZipStreamServiceProvider.php`. 
+Make sure config values are all set.
+Register the provider in `config/app.php`.
+
 ## Authors
 * Jaisen Mathai <jaisen@jmathai.com> - http://jaisenmathai.com
 
