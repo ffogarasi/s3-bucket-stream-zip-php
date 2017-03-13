@@ -20,8 +20,8 @@ $auth = [
 $stream = new S3BucketStreamZip($auth);
 
 try {
-    $stream->bucket('trashtest')
-        ->prefix('trashfolder')
+    $stream->bucket('testbucket')
+        ->prefix('testfolder')
         ->send('name-of-zipfile-to-send.zip');
 } catch (InvalidParameterException $e) {
     echo $e->getMessage();
