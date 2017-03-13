@@ -12,7 +12,6 @@ Installation is done via composer by adding the a dependency on .
 
 ```
 composer require michaeltlee/s3-bucket-stream-zip-php
-composer install
 ```
 
 ## Usage
