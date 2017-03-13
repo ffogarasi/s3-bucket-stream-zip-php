@@ -67,8 +67,27 @@ $stream->bucket('another-test-bucket')
 
 ## Laravel 5.4
 - `pa make:provider AWSZipStreamServiceProvider` and copy the contents `examples/AwsZipStreamServiceProvider.php`. 
-- Make sure config values are all set.
+- Make sure your config values are all set.
 - Register the provider in `config/app.php`.
+
+### OR in `config/app.php`
+```php
+'providers' => [
+    ...
+    MTL\S3BucketStreamZip\AWSZipStreamServiceProvider::class,
+    ...
+]
+```
+
+in `config/services.php`, set:
+```php
+'s3' => [
+    'key'     => '', 
+    'secret'  => '', 
+    'region'  => '',
+    'version' => '',
+];
+```
 
 ## Authors
 * Jaisen Mathai <jaisen@jmathai.com> - http://jaisenmathai.com
