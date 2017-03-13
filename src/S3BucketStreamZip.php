@@ -15,8 +15,8 @@ class S3BucketStreamZip
      * [
      *     'key'     => 'YOUR_KEY',
      *     'secret'  => 'YOUR_SECRET',
-     *     'region'  => 'YOUR_REGION',
-     *     'version' => 'latest',
+     *     'region'  => 'YOUR_REGION', // optional. defaults to 'us-east-1'
+     *     'version' => 'latest', // optional. defaults to 'latest'
      * ]
      */
     private $auth = [];
@@ -47,7 +47,7 @@ class S3BucketStreamZip
         // AND GetObject on any object with which you need to interact.
         $this->s3Client = new S3Client([
             'version'     => (isset($this->auth['version'])) ? $this->auth['version'] : 'latest',
-            'region'      => (isset($this->auth['refion'])) ? $this->auth['region'] : 'us-east',
+            'region'      => (isset($this->auth['region'])) ? $this->auth['region'] : 'us-east-1',
             'credentials' => [
                 'key'    => $this->auth['key'],
                 'secret' => $this->auth['secret'],
@@ -68,7 +68,7 @@ class S3BucketStreamZip
 
     public function prefix($prefix)
     {
-        $this->params->setParam('Prefix', $prefix);
+        $this->params->setParam('Prefix', rtrim($prefix, '/') . '/');
 
         return $this;
     }
@@ -87,20 +87,17 @@ class S3BucketStreamZip
      *
      * @param string $filename - Name for the file to be sent to the client
      * $filename will be what is sent in the content-disposition header
-     * @param $params
      * @throws InvalidParameterException
      * @internal param array - See the documentation for the List Objects API for valid parameters.
      * Only `Bucket` is required.
      *
      * http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGET.html
-     *
-     * ['Bucket' => 'YOUR_BUCKET']
      */
     public function send($filename)
     {
         $params = $this->params->getParams();
 
-        $this->validateParams($params);
+        $this->doesDirectoryExist($params);
 
         $zip = new ZipStream($filename);
         // The iterator fetches ALL of the objects without having to manually loop over responses.
@@ -137,35 +134,18 @@ class S3BucketStreamZip
         if (!isset($auth['secret'])) {
             throw new InvalidParameterException('$auth parameter to constructor requires a `secret` attribute');
         }
-
-        if (!isset($auth['region'])) {
-            throw new InvalidParameterException('$auth parameter to constructor requires a `region` attribute');
-        }
-
-        if (!isset($auth['version'])) {
-            throw new InvalidParameterException('$auth parameter to constructor requires a `version` attribute');
-        }
-    }
-
-    private function validateParams($params)
-    {
-        if (!isset($params['Bucket'])) {
-            throw new InvalidParameterException('$params parameter to send() requires a `Bucket` attribute (with a capital B)');
-        }
-
-        $this->doesDirectoryExist($params);
     }
 
     protected function doesDirectoryExist($params)
     {
-        // Maybe this isn't an actual key, but a prefix.
-        // Do a prefix listing of objects to determine.
         $command = $this->s3Client->getCommand('listObjects', $params);
 
         try {
             $result = $this->s3Client->execute($command);
 
-            return $result['Contents'] || $result['CommonPrefixes'];
+            if (empty($result['Contents']) && empty($result['CommonPrefixes'])) {
+                throw new InvalidParameterException('Bucket or Prefix does not exist');
+            }
         } catch (S3Exception $e) {
             if ($e->getStatusCode() === 403) {
                 return false;
