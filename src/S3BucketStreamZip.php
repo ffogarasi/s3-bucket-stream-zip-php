@@ -25,6 +25,8 @@ class S3BucketStreamZip
      * @var object
      */
     private $s3Client;
+    
+    private $exclude = [];
 
     /**
      * @var object
@@ -34,25 +36,20 @@ class S3BucketStreamZip
     /**
      * Create a new ZipStream object.
      *
-     * @param array $auth - AWS key and secret
+     * @param array $params - AWS key and secret
      * @throws InvalidParameterException
      */
-    public function __construct($auth)
+    public function __construct($params)
     {
-        $this->validateAuth($auth);
-
-        $this->auth = $auth;
+        $this->validateAuth($params);
 
         // S3 User in $this->auth should have permission to execute ListBucket on any buckets
         // AND GetObject on any object with which you need to interact.
-        $this->s3Client = new S3Client([
-            'version'     => (isset($this->auth['version'])) ? $this->auth['version'] : 'latest',
-            'region'      => (isset($this->auth['region'])) ? $this->auth['region'] : 'us-east-1',
-            'credentials' => [
-                'key'    => $this->auth['key'],
-                'secret' => $this->auth['secret'],
-            ],
-        ]);
+        
+        $params['version'] = (isset($params['version'])) ? $params['version'] : 'latest';
+        $params['region'] = (isset($params['region'])) ? $params['region'] : 'us-east-1';
+
+        $this->s3Client = new S3Client($params);
 
         // Register the stream wrapper from an S3Client object
         // This allows you to access buckets and objects stored in Amazon S3 using the s3:// protocol
@@ -81,6 +78,17 @@ class S3BucketStreamZip
 
         return $this;
     }
+    
+    /**
+     * 
+     * @param array $patterns regexps to exclude files/folders from output
+     */
+    public function exclude($exclude)
+    {
+        $this->exclude = $exclude;
+        
+        return $this;
+    }
 
     /**
      * Stream a zip file to the client
@@ -95,43 +103,80 @@ class S3BucketStreamZip
      */
     public function send($filename)
     {
-        $params = $this->params->getParams();
-
-        $this->doesDirectoryExist($params);
-
         $zip = new ZipStream($filename);
-        // The iterator fetches ALL of the objects without having to manually loop over responses.
-        $files = $this->s3Client->getIterator('ListObjects', $params);
+        
+        $params = $this->params->getParams();
+        $root_folder = isset($params['Prefix']) ? $params['Prefix'] : '';
 
-        // Add each object from the ListObjects call to the new zip file.
-        foreach ($files as $file) {
-            // Get the file name on S3 so we can save it to the zip file using the same name.
-            $fileName = basename($file['Key']);
-
-            if (is_file("s3://{$params['Bucket']}/{$file['Key']}")) {
-                $context = stream_context_create([
-                    's3' => ['seekable' => true]
-                ]);
-                // open seekable(!) stream
-                if ($stream = fopen("s3://{$params['Bucket']}/{$file['Key']}", 'r', false, $context)) {
-                    $zip->addFileFromStream($fileName, $stream);
-                }
-            }
-        }
+        $this->append($zip, $root_folder);
 
         // Finalize the zip file.
         $zip->finish();
+    }
+    
+    private function append($zip, $root_folder)
+    {
+        if( $this->checkExclude($root_folder))
+        {
+            return;
+        }
+
+        $this->prefix($root_folder);
+        $params = $this->params->getParams();
+        $this->doesDirectoryExist($params);
+
+        $results = $this->s3Client->getPaginator('ListObjects', $params);
+
+        // Add each object from the ListObjects call to the new zip file.
+        foreach ($results->search("Contents[].Key") as $file) {
+            if ($file == $root_folder || $this->checkExclude($file))
+            {
+                continue;
+            }
+            // Get the file name on S3 so we can save it to the zip file using the same name.
+            $fileName = $file;
+
+            $context = stream_context_create([
+                's3' => ['seekable' => true]
+            ]);
+            // open seekable(!) stream
+            if ($stream = fopen("s3://{$params['Bucket']}/{$file}", 'r', false, $context)) {
+                $zip->addFileFromStream($fileName, $stream);
+            }
+        }
+
+        foreach ($results->search("CommonPrefixes[].Prefix") as $folder) {
+            $this->append($zip, $folder);
+        }
+    }
+    
+    private function checkExclude($path)
+    {
+        foreach($this->exclude as $exclude)
+        {
+            if (preg_match($exclude, $path))
+            {
+                return true;
+            }
+        }
+        
+        return false;
     }
 
     private function validateAuth($auth)
     {
         // We require the AWS key to be passed in $auth.
-        if (!isset($auth['key'])) {
+        if (!isset($auth['credentials'])) {
+            throw new InvalidParameterException('$auth parameter to constructor requires a `credentials` attribute');
+        }
+
+        // We require the AWS secret to be passed in $auth.
+        if (!isset($auth['credentials']['key'])) {
             throw new InvalidParameterException('$auth parameter to constructor requires a `key` attribute');
         }
 
         // We require the AWS secret to be passed in $auth.
-        if (!isset($auth['secret'])) {
+        if (!isset($auth['credentials']['secret'])) {
             throw new InvalidParameterException('$auth parameter to constructor requires a `secret` attribute');
         }
     }

@@ -1,6 +1,6 @@
 # S3BucketStreamZip
 
-Forked from `jmathai/s3-bucket-stream-zip-php`
+Forked from `Michaeltlee/s3-bucket-stream-zip-php`
 
 ## Overview
 This library lets you efficiently stream the contents of an S3 bucket/folder as a zip file to the client.
@@ -11,7 +11,7 @@ Uses v3 of AWS SDK to stream files directly from S3.
 Installation is done via composer by adding the a dependency on .
 
 ```
-composer require michaeltlee/s3-bucket-stream-zip-php
+composer require ffogarasi/s3-bucket-stream-zip-php
 ```
 
 ## Usage
